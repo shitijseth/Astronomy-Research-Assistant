@@ -18,6 +18,21 @@ try:
 except ImportError:
     NasaExoplanetArchive = None  # astroquery is optional: pip install astroquery
 
+# --------------------------------------------------------------------------- #
+# Guard against urllib3 ≥ 2 when OpenSSL is too old
+# --------------------------------------------------------------------------- #
+try:
+    v = pkg_resources.get_distribution("urllib3").parsed_version
+    if v >= pkg_resources.parse_version("2"):
+        raise RuntimeError(
+            "urllib3 >= 2.0 detected but this Python is linked against "
+            "OpenSSL < 1.1.1.  Please `pip install \"urllib3<2\"` or use the "
+            "provided requirements.txt."
+        )
+except pkg_resources.DistributionNotFound:
+    # urllib3 not yet installed — `pip install -r requirements.txt` will pull the right version
+    pass
+
 # ---------------------------------------------------------------------------
 # 1 — initialise MCP server
 # ---------------------------------------------------------------------------
