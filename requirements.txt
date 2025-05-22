@@ -1,0 +1,8 @@
+# ── core runtime ──────────────────────────────────────────────────────────────
+mcp[cli]>=1.4
+requests>=2.31
+urllib3<2          # ← pin to 1.26.x until OpenSSL ≥ 1.1.1 is guaranteed
+# optional astro / LLM stack
+astroquery>=0.4.7
+transformers>=4.40
+langchain>=0.1.17
