@@ -101,18 +101,39 @@ def get_exoplanet_info(planet_name: str) -> str:
 # ---------------------------------------------------------------------------
 # 5 — RESOURCE:  provide planet facts via URI       e.g. planet://Mars
 # ---------------------------------------------------------------------------
-_planetary_data = {
-    "Mars": {"distance_from_sun_au": 1.52, "radius_km": 3389.5},
-    "Earth": {"distance_from_sun_au": 1.0, "radius_km": 6371},
-}
+SOLAR_SYSTEM_API = "https://api.le-systeme-solaire.net/rest/bodies/{id}"
 
-@mcp.resource("planet://{name}")
-def planet_resource(name: str) -> str:
-    """Return basic facts for a Solar‑System planet (local demo data)."""
-    info = _planetary_data.get(name.capitalize())
-    if not info:
-        raise ValueError(f"No data for planet '{name}'.")
-    return (
-        f"{name.capitalize()} is {info['distance_from_sun_au']} AU from the Sun "
-        f"with a mean radius of {info['radius_km']} km."
-    )
+def _fetch_planet_json(name: str) -> dict:
+    """Return raw JSON for a Solar-System body or raise ValueError if missing."""
+    url = SOLAR_SYSTEM_API.format(id=name.lower())
+    r = requests.get(url, timeout=10)
+    if r.status_code != 200:
+        raise ValueError(f"Could not retrieve data for '{name}'. "
+                         f"Status code: {r.status_code}")
+    data = r.json()
+    # The API returns {'isPlanet': False, ...} for junk requests; guard that:
+    if data.get("englishName", "").lower() != name.lower():
+        raise ValueError(f"No planet named '{name}' in the API.")
+    return data
+
+def _summarize_planet(data: dict) -> str:
+    """Build a concise fact sheet from the JSON payload."""
+    name = data["englishName"]
+    radius_km = data.get("meanRadius")
+    gravity = data.get("gravity")           # m/s²
+    sidereal_day = data.get("sideralRotation")   # hours
+    orbital_period = data.get("sideralOrbit")    # days
+    moons = len(data.get("moons") or [])
+
+    facts = [
+        f"**{name}** quick facts:",
+        f"• Mean radius: **{radius_km:,} km**"            if radius_km else "",
+        f"• Surface gravity: **{gravity} m/s²**"          if gravity else "",
+        f"• Sidereal day: **{sidereal_day} h**"           if sidereal_day else "",
+        f"• Orbital period about the Sun: "
+        f"**{orbital_period} days**"                     if orbital_period else "",
+        f"• Number of known moons: **{moons}**",
+        f"Data source: Le Système Solaire API"
+    ]
+    # Keep only the fields that exist and join non-empty strings with newlines
+    return "\n".join(filter(bool, facts))
